@@ -12,10 +12,11 @@ const CRITICAL_PATTERNS = [
   /\b(outage|outages|service disruption|major incident)\b/i,
   /\b(can't|cannot|unable to)\s+(access|log in|login|use)\b/i,
   /\b(data|database)\s+(loss|lost|corrupt|corruption)\b/i,
+  /\b(database|db)\s+(connection|connectivity)\s+(lost|failed|down)\b/i,
   /\bsecurity breach\b/i,
   /\baccount (hacked|compromised)\b/i,
   /\bcharged twice\b/i,
-  /\bproduction (error|failure|failure)\b/i,
+  /\bproduction (error|failure)\b/i,
   /\bcompletely\s+broken\b/i
 ]
 
