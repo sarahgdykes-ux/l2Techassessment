@@ -37,7 +37,7 @@ const LOW_PATTERNS = [
 export function calculateUrgency(message) {
   const normalized = message.trim()
 
-  if (!normalized) return "Low"
+  if (!normalized || normalized.length < 3) return "Low"
 
   // Explicit operational incidents should never be downgraded just because
   // the customer used a short message.
