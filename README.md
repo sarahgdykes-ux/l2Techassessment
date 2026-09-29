@@ -8,6 +8,43 @@ The Customer Inbox Triage app is a lightweight AI-powered tool that helps classi
 
 Support teams waste time manually reading and triaging customer messages. This tool provides an automated first pass at classification to help prioritize and route messages more efficiently.
 
+## Assessment Findings
+
+### Top 3 areas for improvement
+
+1. **Urgency scoring relied on weak signals**
+   - The original scorer increased urgency for every exclamation point and decreased it for short messages, questions, polite language, weekends, and after-hours messages.
+   - This created obvious false positives/negatives: "Server down now" could be Low because it is short, while a long thank-you message could be High because it contains multiple exclamation points.
+   - **Implemented:** urgency is now driven by explicit incident and failure language first, with positive feedback and simple informational questions treated as lower priority. Time of day, day of week, punctuation count, and general message length are no longer used as urgency penalties.
+
+2. **LLM category parsing is too loose**
+   - The app asks the model for free-form text and then infers the category by searching the response for words such as "billing", "technical", or "feature".
+   - This can produce inconsistent categories when the model's explanation contains multiple category terms.
+   - **Proposed solution:** constrain the model to a fixed category schema and parse structured JSON rather than searching free-form reasoning text.
+
+3. **Recommended actions are not sufficiently category-specific**
+   - The current Feature Request template tells customers to check the billing portal, which does not match the customer's intent.
+   - Technical issues also receive the same generic browser-restart advice regardless of severity.
+   - **Proposed solution:** create intent-specific response templates and include urgency/context when selecting the recommended next step.
+
+## Urgency Improvement Test
+
+The updated scorer was tested against representative edge cases:
+
+| Message | Expected urgency | Result |
+|---|---|---|
+| "Database connection lost" | High | Pass |
+| "Server down now" | High | Pass |
+| "Our production server is down" | High | Pass |
+| "My payment failed and now I can't access the dashboard." | High | Pass |
+| "Thank you so much! Your team has been incredibly helpful..." | Low | Pass |
+| "hi" | Low | Pass |
+| "What are your business hours?" | Low | Pass |
+| "The dashboard is working slowly today." | Medium | Pass |
+| "Could you add an export to CSV feature?" | Medium | Pass |
+
+The goal of the change is not to make every short message urgent; it is to prevent high-confidence incidents from being downgraded simply because the customer wrote a short message.
+
 ## Tech Stack
 
 - **Frontend**: React + Vite + Tailwind CSS
@@ -48,31 +85,24 @@ Support teams waste time manually reading and triaging customer messages. This t
    ```
    
    Get your FREE API key from: https://console.groq.com/keys
-   
-   **Why Groq?** Groq offers a generous free tier with fast inference and no credit card required!
 
 4. **Run the application**
    ```bash
    npm run dev
    ```
-   
-   The app will be available at `http://localhost:5173`
 
 ## How It Works
 
 1. **Paste Message**: User pastes a customer support message into the text area
 2. **Analyze**: Click "Analyze Message" to process the input
-3. **Classification**: The app runs three processes in parallel:
-   - **Category Classification** (LLM): Uses Groq AI (Llama 3.3 70B) to categorize the message
-   - **Urgency Scoring** (Rule-based): Applies simple rules to determine urgency
+3. **Classification**: The app runs three processes:
+   - **Category Classification** (LLM): Uses Groq AI (Llama 3.3 70B) to categorize messages
+   - **Urgency Scoring** (Rule-based): Uses explicit incident/failure signals to determine urgency
    - **Recommendation** (Template-based): Maps category to a recommended action
 4. **Display Results**: Shows category, urgency tag, recommended action, and AI reasoning
 5. **History**: All analyses are saved to localStorage and viewable in the History tab
 
-
 ## Example Test Messages
-
-Try analyzing these messages to see how the triage system works:
 
 ### Example 1: Production Issue
 ```
@@ -110,11 +140,9 @@ The dashboard won't load when I try to access it. I've tried refreshing but it k
 
 ## Why Groq?
 
-- ✅ **Completely Free** - No credit card required
-- ✅ **Fast Inference** - Groq's LPU technology is incredibly fast
-- ✅ **Generous Limits** - ~14,400 requests/day on free tier
-- ✅ **High Quality** - Llama 3.3 70B performs excellently
-- ✅ **Easy Signup** - Get started in minutes at https://console.groq.com
+- ✅ **Fast Inference**
+- ✅ **High Quality**
+- ✅ **Easy local development**
 
 ## License
 
