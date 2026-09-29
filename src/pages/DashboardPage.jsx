@@ -1,51 +1,55 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 function DashboardPage() {
-  const [stats, setStats] = useState({
-    total: 0,
-    today: 0,
-    highUrgencyPercent: 0,
-    avgPerDay: 0
+  const [stats] = useState(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
+      const today = new Date().toDateString()
+      const todayMessages = history.filter(item => {
+        const itemDate = item?.timestamp ? new Date(item.timestamp) : null
+        return itemDate && !Number.isNaN(itemDate.getTime()) && itemDate.toDateString() === today
+      })
+
+      const highUrgency = history.filter(h => h.urgency === 'High').length
+      const totalDays = history.length > 0 ? 7 : 1
+
+      return {
+        total: history.length,
+        today: todayMessages.length,
+        highUrgencyPercent: history.length > 0 ? Math.round((highUrgency / history.length) * 100) : 0,
+        avgPerDay: Math.round(history.length / totalDays)
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard data.', error)
+      return { total: 0, today: 0, highUrgencyPercent: 0, avgPerDay: 0 }
+    }
   })
-  const [categoryData, setCategoryData] = useState([])
-  const [urgencyData, setUrgencyData] = useState({ High: 0, Medium: 0, Low: 0 })
-
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  const loadDashboardData = () => {
-    const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
-    const today = new Date().toDateString()
-    const todayMessages = history.filter(item => 
-      new Date(item.timestamp).toDateString() === today
-    )
-
-    // Calculate stats
-    const highUrgency = history.filter(h => h.urgency === 'High').length
-    const totalDays = history.length > 0 ? 7 : 1
-    
-    setStats({
-      total: history.length,
-      today: todayMessages.length,
-      highUrgencyPercent: history.length > 0 ? Math.round((highUrgency / history.length) * 100) : 0,
-      avgPerDay: Math.round(history.length / totalDays)
-    })
-
-    // Category distribution
-    const categories = {}
-    history.forEach(item => {
-      categories[item.category] = (categories[item.category] || 0) + 1
-    })
-    setCategoryData(Object.entries(categories).map(([name, count]) => ({ name, count })))
-
-    // Urgency breakdown
-    const urgency = { High: 0, Medium: 0, Low: 0 }
-    history.forEach(item => {
-      urgency[item.urgency] = (urgency[item.urgency] || 0) + 1
-    })
-    setUrgencyData(urgency)
-  }
+  const [categoryData] = useState(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
+      const categories = {}
+      history.forEach(item => {
+        categories[item.category] = (categories[item.category] || 0) + 1
+      })
+      return Object.entries(categories).map(([name, count]) => ({ name, count }))
+    } catch (error) {
+      console.error('Failed to load category data.', error)
+      return []
+    }
+  })
+  const [urgencyData] = useState(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
+      const urgency = { High: 0, Medium: 0, Low: 0 }
+      history.forEach(item => {
+        urgency[item.urgency] = (urgency[item.urgency] || 0) + 1
+      })
+      return urgency
+    } catch (error) {
+      console.error('Failed to load urgency data.', error)
+      return { High: 0, Medium: 0, Low: 0 }
+    }
+  })
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

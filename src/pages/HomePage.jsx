@@ -1,25 +1,27 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 
 function HomePage() {
-  const [stats, setStats] = useState({ total: 0, today: 0 })
-  const [recentActivity, setRecentActivity] = useState([])
+  const { stats, recentActivity } = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
+      const today = new Date().toDateString()
+      const todayCount = history.filter(item => {
+        const itemDate = item?.timestamp ? new Date(item.timestamp) : null
+        return itemDate && !Number.isNaN(itemDate.getTime()) && itemDate.toDateString() === today
+      }).length
 
-  useEffect(() => {
-    // Load stats from localStorage
-    const history = JSON.parse(localStorage.getItem('triageHistory') || '[]')
-    const today = new Date().toDateString()
-    const todayCount = history.filter(item => 
-      new Date(item.timestamp).toDateString() === today
-    ).length
-
-    setStats({
-      total: history.length,
-      today: todayCount
-    })
-
-    // Get recent 3 items
-    setRecentActivity(history.slice(-3).reverse())
+      return {
+        stats: { total: history.length, today: todayCount },
+        recentActivity: history.slice(-3).reverse()
+      }
+    } catch (error) {
+      console.error('Failed to read triage history for dashboard.', error)
+      return {
+        stats: { total: 0, today: 0 },
+        recentActivity: []
+      }
+    }
   }, [])
 
   return (

@@ -17,7 +17,7 @@ const actionTemplates = {
  * @param {string} urgency - The urgency level
  * @returns {string} - Recommended next step
  */
-export function getRecommendedAction(category, urgency) {
+export function getRecommendedAction(category) {
   return actionTemplates[category] || "No recommendation available."
 }
 
@@ -39,5 +39,5 @@ export function getAvailableCategories() {
  * @returns {boolean} - Whether to escalate
  */
 export function shouldEscalate(category, urgency, message) {
-  return message.length > 100
+  return category === 'Technical Problem' && urgency === 'High' && message.length > 100
 }
