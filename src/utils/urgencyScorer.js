@@ -1,41 +1,62 @@
 /**
- * Urgency Scorer - Rule-based urgency calculation
+ * Urgency Scorer - rule-based priority calculation.
+ *
+ * Priority is driven by explicit incident language first, with sentiment
+ * and message structure used as supporting signals. We intentionally avoid
+ * using message length, punctuation count, business hours, or weekends as
+ * direct urgency penalties because those signals are unreliable.
  */
 
+const CRITICAL_PATTERNS = [
+  /\b(server|service|site|system|production)\s+(is\s+)?(down|offline|unavailable)\b/i,
+  /\b(outage|outages|service disruption|major incident)\b/i,
+  /\b(can't|cannot|unable to)\s+(access|log in|login|use)\b/i,
+  /\b(data|database)\s+(loss|lost|corrupt|corruption)\b/i,
+  /\bsecurity breach\b/i,
+  /\baccount (hacked|compromised)\b/i,
+  /\bcharged twice\b/i,
+  /\bproduction (error|failure|failure)\b/i,
+  /\bcompletely\s+broken\b/i
+]
+
+const HIGH_PATTERNS = [
+  /\b(error|bug|crash|failed|failure|broken|not working|timeout|timed out)\b/i,
+  /\b(payment|charge|refund)\b.*\b(failed|wrong|missing|declined)\b/i,
+  /\b(blocked|locked out|can't log in|cannot log in)\b/i,
+  /\b(asap|urgent|urgently|immediately|right away)\b/i
+]
+
+const LOW_PATTERNS = [
+  /\bthank(s| you)?\b/i,
+  /\bappreciate\b/i,
+  /\b(love|great|excellent|wonderful|happy)\b/i,
+  /\b(just wanted to (say|share)|positive feedback)\b/i
+]
+
 export function calculateUrgency(message) {
-  let urgencyScore = 50
-  
-  const exclamationCount = (message.match(/!/g) || []).length
-  urgencyScore += exclamationCount * 30
-  
-  if (message.length < 50) urgencyScore -= 40
-  if (message.length < 20) urgencyScore -= 60
-  
-  if (message === message.toUpperCase() && message.length > 10) {
-    urgencyScore -= 50
+  const normalized = message.trim()
+
+  if (!normalized) return "Low"
+
+  // Explicit operational incidents should never be downgraded just because
+  // the customer used a short message.
+  if (CRITICAL_PATTERNS.some(pattern => pattern.test(normalized))) {
+    return "High"
   }
-  
-  const politeWords = ['please', 'thank', 'thanks', 'appreciate', 'kindly']
-  politeWords.forEach(word => {
-    if (message.toLowerCase().includes(word)) urgencyScore -= 15
-  })
-  
-  if (message.includes('?')) urgencyScore -= 25
-  
-  const now = new Date()
-  if (now.getDay() === 0 || now.getDay() === 6) {
-    urgencyScore -= 20
+
+  // High-confidence support failures take priority over generic questions.
+  if (HIGH_PATTERNS.some(pattern => pattern.test(normalized))) {
+    return "High"
   }
-  if (now.getHours() < 9 || now.getHours() > 17) {
-    urgencyScore -= 15
+
+  // Positive feedback and simple questions are normally low priority.
+  if (LOW_PATTERNS.some(pattern => pattern.test(normalized))) {
+    return "Low"
   }
-  
-  const positiveWords = ['happy', 'love', 'great', 'excellent', 'wonderful']
-  positiveWords.forEach(word => {
-    if (message.toLowerCase().includes(word)) urgencyScore -= 20
-  })
-  
-  if (urgencyScore > 80) return "High"
-  if (urgencyScore < 30) return "Low"
+
+  if (/\?\s*$/.test(normalized) && !/\b(problem|issue|error|failed|can't|cannot)\b/i.test(normalized)) {
+    return "Low"
+  }
+
   return "Medium"
 }
